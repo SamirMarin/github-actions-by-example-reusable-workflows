@@ -1,4 +1,4 @@
-name: test build deploy
+name: test-build-deploy
 
 on:
   workflow_call:
@@ -101,6 +101,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    depends-on: test
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -129,6 +130,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    depends-on: build
     steps:
       - name: checkout
         uses: actions/checkout@v4
