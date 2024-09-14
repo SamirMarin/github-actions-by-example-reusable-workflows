@@ -63,7 +63,7 @@ on:
         required: false
         type: boolean
         description: "Build and push"
-        default: {{ github.event_name != 'pull_request' }}
+        default: ${{ github.event_name != 'pull_request' }}
 jobs:
   test:
     runs-on: ubuntu-latest
