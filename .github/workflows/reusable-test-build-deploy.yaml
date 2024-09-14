@@ -101,7 +101,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    depends-on: test
+    needs: test
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -130,7 +130,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    depends-on: build
+    needs: build
     steps:
       - name: checkout
         uses: actions/checkout@v4
