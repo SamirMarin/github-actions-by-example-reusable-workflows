@@ -64,6 +64,16 @@ on:
         type: boolean
         description: "Build and push"
         default: ${{ github.event_name != 'pull_request' }}
+      deploy-commit:
+        required: false
+        type: boolean
+        description: "Commit changes to deploy"
+        default: ${{ github.event_name != 'pull_request' }}
+      deploy-create-pr:
+        required: false
+        type: boolean
+        description: "Create PR for deploy"
+        default: ${{ github.event_name != 'pull_request' }}
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -117,3 +127,21 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Update deployment.yaml
+        uses: fjogeleit/yaml-update-action@v1
+        with:
+          valueFile: 'deploy/deployment.yaml'
+          propertyPath: 'spec.template.spec.containers[0].image'
+          value: ghcr.io/${{ inputs.image-owner }}/${{ inputs.image-name }}:${{ github.sha }}
+          commitChange: ${{ inputs.deploy-commit }}
+          targetBranch: main
+          masterBranchName: main
+          createPR: ${{ inputs.deploy-create-pr }}
+          branch: 'reusable/deploy'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          message: 'Update Image Version to: ${{ github.sha }}'
