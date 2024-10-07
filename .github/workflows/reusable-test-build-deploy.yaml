@@ -1,0 +1,149 @@
+name: test-build-deploy
+
+on:
+  workflow_call:
+    inputs:
+      docker-compose-command:
+        required: false
+        type: string
+        description: "Docker compose command"
+        default: |
+          docker compose up -d
+      docker-compose-command-opts:
+        required: false
+        type: string
+        description: "Docker compose command options"
+        default: "-inMemory"
+      test-script:
+        required: false
+        type: string
+        description: "Test script"
+        default: |
+          ./scripts/dynamodb/create-table.sh
+          go test -v ./...
+      aws-region:
+        required: false
+        type: string
+        description: "AWS region"
+        default: "us-west-2"
+      dynamodb-local-endpoint:
+        required: false
+        type: string
+        description: "DynamoDB local endpoint"
+        default: "http://localhost:8000"
+      test-aws-access-key-id:
+        required: false
+        type: string
+        description: "AWS access key ID -> note this is meant local env testing should not actually be a real access key id"
+        default: "test"
+      test-aws-secret-access-key:
+        required: false
+        type: string
+        description: "AWS secret access key -> note this is meant local env testing should not actually be a real secret access key"
+        default: "test"
+      image-owner:
+        required: false
+        type: string
+        description: "The repository owner (the ORG or username)"
+        default: ${{ github.event.repository.owner.login }}
+      image-name:
+        required: false
+        type: string
+        description: "The image name"
+        default: ${{ github.event.repository.name }}
+      build-tags:
+        required: false
+        type: string
+        description: "The build tags"
+        default: |
+          type=sha,prefix=,format=long
+          type=ref,event=branch
+          type=ref,event=pr
+      build-push:
+        required: false
+        type: boolean
+        description: "Whether to push the image after build"
+        default: ${{ github.event_name != 'pull_request' }}
+      deploy-commit:
+        required: false
+        type: boolean
+        description: "Commit changes to deploy"
+        default: ${{ github.event_name != 'pull_request' }}
+      deploy-create-pr:
+        required: false
+        type: boolean
+        description: "Create PR for deploy"
+        default: ${{ github.event_name != 'pull_request' }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: set-up go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: docker compose
+        run: |
+          ${{ inputs.docker-compose-command }}
+        env:
+          DOCKER_COMPOSE_COMMAND_OPTS: ${{ inputs.docker-compose-command-opts }}
+      - name: test
+        run: |
+          ${{ inputs.test-script }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ inputs.test-aws-access-key-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ inputs.test-aws-secret-access-key }}
+          AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+          DYNAMODB_LOCAL_ENDPOINT: ${{ inputs.dynamodb-local-endpoint }}
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ inputs.image-owner }}/${{ inputs.image-name }}
+          tags: ${{ inputs.build-tags }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: ${{ inputs.build-push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Update deployment.yaml
+        uses: fjogeleit/yaml-update-action@v1
+        with:
+          valueFile: 'deploy/deployment.yaml'
+          propertyPath: 'spec.template.spec.containers[0].image'
+          value: ghcr.io/${{ inputs.image-owner }}/${{ inputs.image-name }}:${{ github.sha }}
+          commitChange: ${{ inputs.deploy-commit }}
+          targetBranch: main
+          masterBranchName: main
+          createPR: ${{ inputs.deploy-create-pr }}
+          branch: 'reusable/deploy'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          message: 'Update Image Version to: ${{ github.sha }}'

@@ -21,6 +21,9 @@ on:
     branches:
       - main
 
+permissions:
+  pull-requests: write
+
 jobs:
   workflows-to-release:
     runs-on: ubuntu-latest
@@ -58,9 +61,12 @@ jobs:
            elif [ "$changed_actions" != '[]' ]; then
              changed=$changed_actions
            fi
+          
+          # Trim any leading/trailing spaces or newlines from the final result
+          trimmed_changed=$(echo "$changed" | jq -c .)
 
-          echo "Changed Workflows: $changed"
-          echo "values=${changed}" >> $GITHUB_OUTPUT
+          echo "Changed Workflows: $trimmed_changed"
+          echo "values=$trimmed_changed" >> $GITHUB_OUTPUT
                  
   release:
     runs-on: ubuntu-latest
@@ -74,10 +80,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Get bump version from PR labels
-        id: bump_version
-        uses: 1047Games/reusable-workflows/.github/actions/bump-type-label@bump-type-label-v0
+        id: bump_label
+        uses: SamirMarin/get-labels-action@v0
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          label_key: bump
+          label_value_order: "patch,minor,major,ignore"
+          default_label_value: patch
 
       - name: Bump version and push tag
         id: tag_version
@@ -85,7 +94,7 @@ jobs:
         with:
           fetch_all_tags: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          default_bump: ${{ steps.bump_version.outputs.bump-type }}
+          default_bump: ${{ steps.bump_label.outputs.label_value }}
           tag_prefix: ${{ matrix.workflows }}-v
           dry_run: ${{ github.event_name == 'pull_request' }}
 
