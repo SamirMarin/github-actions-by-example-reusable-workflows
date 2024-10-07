@@ -62,8 +62,8 @@ jobs:
           # Trim any leading/trailing spaces or newlines from the final result
           trimmed_changed=$(echo "$changed" | jq -c .)
 
-          echo "Changed Workflows: $changed"
-          echo "values=${changed}" >> $GITHUB_OUTPUT
+          echo "Changed Workflows: $trimmed_changed"
+          echo "values=$trimmed_changed" >> $GITHUB_OUTPUT
                  
   release:
     runs-on: ubuntu-latest
