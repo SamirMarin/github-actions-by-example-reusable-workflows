@@ -58,6 +58,9 @@ jobs:
            elif [ "$changed_actions" != '[]' ]; then
              changed=$changed_actions
            fi
+          
+          # Trim any leading/trailing spaces or newlines from the final result
+          trimmed_changed=$(echo "$changed" | jq -c .)
 
           echo "Changed Workflows: $changed"
           echo "values=${changed}" >> $GITHUB_OUTPUT
