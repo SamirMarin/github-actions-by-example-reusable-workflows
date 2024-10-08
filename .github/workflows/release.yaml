@@ -22,7 +22,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -97,7 +97,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           default_bump: ${{ steps.bump_label.outputs.label_value }}
           tag_prefix: ${{ matrix.workflows }}-v
-          dry_run: false #${{ github.event_name == 'pull_request' }}
+          dry_run: ${{ github.event_name == 'pull_request' }}
 
       - name: Create major version tag value
         id: major_tag_version

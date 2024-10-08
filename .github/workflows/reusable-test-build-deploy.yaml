@@ -1,6 +1,5 @@
 name: test-build-deploy
 
-#workflow
 on:
   workflow_call:
     inputs:
