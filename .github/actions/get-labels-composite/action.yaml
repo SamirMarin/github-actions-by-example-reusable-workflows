@@ -67,7 +67,7 @@ runs:
         echo "The push event label value is: $PUSH_EVENT_LABEL"
         if [ -n "$PULL_REQUEST_LABEL" ]; then
           LABEL_VALUE=$PULL_REQUEST_LABEL
-        elif [ -n "$PUSH_EVENT_LABEL ]"; then
+        elif [ -n "$PUSH_EVENT_LABEL" ]; then
           LABEL_VALUE=$PUSH_EVENT_LABEL
         fi
         echo "The label value is: $LABEL_VALUE"
