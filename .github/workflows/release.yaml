@@ -6,12 +6,14 @@ on:
       - main
     paths:
       - ".github/workflows/reusable-**"
+      - ".github/actions/**"
     tags:
       - '*'
 
   pull_request:
     paths:
       - ".github/workflows/reusable-**"
+      - ".github/actions/**"
     types:
       - opened
       - synchronize
