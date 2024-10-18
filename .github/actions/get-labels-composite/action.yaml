@@ -61,8 +61,8 @@ runs:
     - id: label
       run: |
         LABEL_VALUE=${{ inputs.default-label-value }}
-        PULL_REQUEST_LABEL=${{ steps.pull-request-event-label.output.value }}
-        PUSH_EVENT_LABEL=${{ steps.push-event-label.output.value }}
+        PULL_REQUEST_LABEL=${{ steps.pull-request-event-label.outputs.value }}
+        PUSH_EVENT_LABEL=${{ steps.push-event-label.outputs.value }}
         echo "The pull request label value is: $PULL_REQUEST_LABEL"
         echo "The push event label value is: $PUSH_EVENT_LABEL"
         if $PULL_REQUEST_LABEL; then
