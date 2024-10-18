@@ -19,7 +19,7 @@ runs:
   using: "composite"
   steps:
     - id: push-event-label
-      if: ${{ github.event_name }} != 'pull_request'
+      if: ${{ github.event_name != 'pull_request' }}
       run: |
         LABEL_VALUE=${{ inputs.default-label-value }}
         REPOSITORIES=$(curl \
@@ -43,7 +43,7 @@ runs:
         echo "value=${LABEL_VALUE}" >> $GITHUB_OUTPUT
       shell: bash
     - id: pull-request-event-label
-      if: ${{ github.event_name }} == 'pull_request'
+      if: ${{ github.event_name == 'pull_request' }}
       run: |
         LABEL_VALUE=${{ inputs.default-label-value }}
         if ${{ contains(github.event.pull_request.labels.*.name, 'bump:major') }}; then
@@ -61,8 +61,8 @@ runs:
     - id: label
       run: |
         LABEL_VALUE=${{ inputs.default-label-value }}
-        PULL_REQUEST_LABEL=${{ steps.pull-request-event-label.value }}
-        PUSH_EVENT_LABEL=${{ steps.push-event-label.value }}
+        PULL_REQUEST_LABEL=${{ steps.pull-request-event-label.output.value }}
+        PUSH_EVENT_LABEL=${{ steps.push-event-label.output.value }}
         echo "The pull request label value is: $PULL_REQUEST_LABEL"
         echo "The push event label value is: $PUSH_EVENT_LABEL"
         if $PULL_REQUEST_LABEL; then
