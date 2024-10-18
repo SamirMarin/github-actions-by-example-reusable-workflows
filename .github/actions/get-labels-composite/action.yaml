@@ -1,0 +1,75 @@
+name: 'get labels'
+description: 'Outputs a bump type based on the bump:<value> label'
+inputs:
+  label-key:
+    description: 'The key of keyed label. i.e key:value'
+    required: true
+  default-label-value:
+    description: 'The default label value if no label is found'
+    required: false
+    default: 'patch'
+  github-token:
+    description: 'Token to access github repo, needed for push events'
+    required: false
+outputs:
+  label-value:
+    description: "the value of the keyed label. i.e key:value"
+    value: ${{ steps.label.outputs.value }}
+runs:
+  using: "composite"
+  steps:
+    - id: push-event-label
+      if: ${{ github.event_name }} != 'pull_request'
+      run: |
+        LABEL_VALUE=${{ inputs.default-label-value }}
+        REPOSITORIES=$(curl \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ inputs.github-token }}" \
+          https://api.github.com/repos/${{ github.event.repository.owner.login }}/${{ github.event.repository.name }}/commits/${GITHUB_SHA}/pulls)
+        LENGTH=$(echo "$REPOSITORIES" | jq length)
+        if [[  "$LENGTH" == "1" ]]; then
+          LABELS=$(echo "$REPOSITORIES" | jq '.[0].labels | .[].name')
+          if echo "${LABELS}" | grep "bump:major" ; then
+            LABEL_VALUE="major"
+          elif echo "${LABELS}" | grep "bump:minor" ; then
+            LABEL_VALUE="minor"
+          elif echo "${LABELS}" | grep "bump:patch" ; then
+            LABEL_VALUE="patch"
+          elif echo "${LABELS}" | grep "bump:ignore" ; then
+            LABEL_VALUE="ignore"
+          fi
+        fi
+        echo "The push event label value is: $LABEL_VALUE"
+        echo "value=${LABEL_VALUE}" >> $GITHUB_OUTPUT
+      shell: bash
+    - id: pull-request-event-label
+      if: ${{ github.event_name }} == 'pull_request'
+      run: |
+        LABEL_VALUE=${{ inputs.default-label-value }}
+        if ${{ contains(github.event.pull_request.labels.*.name, 'bump:major') }}; then
+          LABEL_VALUE="major"
+        elif ${{ contains(github.event.pull_request.labels.*.name, 'bump:minor') }}; then
+          LABEL_VALUE="minor"
+        elif ${{ contains(github.event.pull_request.labels.*.name, 'bump:patch') }}; then
+          LABEL_VALUE="patch"
+        elif ${{ contains(github.event.pull_request.labels.*.name, 'bump:ignore') }}; then
+          LABEL_VALUE="ignore"
+        fi
+        echo "The pull request event label value is: $LABEL_VALUE"
+        echo "value=${LABEL_VALUE}" >> $GITHUB_OUTPUT
+      shell: bash
+    - id: label
+      run: |
+        LABEL_VALUE=${{ inputs.default-label-value }}
+        PULL_REQUEST_LABEL=${{ steps.pull-request-event-label.value }}
+        PUSH_EVENT_LABEL=${{ steps.push-event-label.value }}
+        echo "The pull request label value is: $PULL_REQUEST_LABEL"
+        echo "The push event label value is: $PUSH_EVENT_LABEL"
+        if $PULL_REQUEST_LABEL; then
+          LABEL_VALUE=$PULL_REQUEST_LABEL
+        elif $PUSH_EVENT_LABEL; then
+          LABEL_VALUE=$PUSH_EVENT_LABEL
+        fi
+        echo "The label value is: $LABEL_VALUE"
+        echo "value=${LABEL_VALUE}" >> $GITHUB_OUTPUT
+      shell: bash
