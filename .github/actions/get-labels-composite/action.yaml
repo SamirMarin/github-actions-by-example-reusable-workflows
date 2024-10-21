@@ -28,6 +28,7 @@ runs:
           https://api.github.com/repos/${{ github.event.repository.owner.login }}/${{ github.event.repository.name }}/commits/${GITHUB_SHA}/pulls)
         LENGTH=$(echo "$REPOSITORIES" | jq length)
         echo "the length is: $LENGTH"
+        echo "the repositories are: $REPOSITORIES"
         LABEL_KEY=${{ inputs.label-key }}
         if [[  "$LENGTH" == "1" ]]; then
           LABELS=$(echo "$REPOSITORIES" | jq '.[0].labels | .[].name')
