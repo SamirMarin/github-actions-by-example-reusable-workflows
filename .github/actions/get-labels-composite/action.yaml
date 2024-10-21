@@ -10,7 +10,7 @@ inputs:
     default: 'patch'
   github-token:
     description: 'Token to access github repo, needed for push events'
-    required: false
+    required: true
 outputs:
   label-value:
     description: "the value of the keyed label. i.e key:value"
@@ -24,7 +24,7 @@ runs:
         LABEL_VALUE=${{ inputs.default-label-value }}
         REPOSITORIES=$(curl \
           -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Authorization: Bearer ${{ inputs.github-token }}" \
           https://api.github.com/repos/${{ github.event.repository.owner.login }}/${{ github.event.repository.name }}/commits/${GITHUB_SHA}/pulls)
         LENGTH=$(echo "$REPOSITORIES" | jq length)
         echo "the length is: $LENGTH"
