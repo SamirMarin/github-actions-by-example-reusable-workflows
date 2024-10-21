@@ -27,15 +27,16 @@ runs:
           -H "Authorization: Bearer ${{ inputs.github-token }}" \
           https://api.github.com/repos/${{ github.event.repository.owner.login }}/${{ github.event.repository.name }}/commits/${GITHUB_SHA}/pulls)
         LENGTH=$(echo "$REPOSITORIES" | jq length)
+        LABEL_KEY=${{ inputs.label-key }}
         if [[  "$LENGTH" == "1" ]]; then
           LABELS=$(echo "$REPOSITORIES" | jq '.[0].labels | .[].name')
-          if echo "${LABELS}" | grep "bump:major" ; then
+          if echo "${LABELS}" | grep "$LABEL_KEY:major" ; then
             LABEL_VALUE="major"
-          elif echo "${LABELS}" | grep "bump:minor" ; then
+          elif echo "${LABELS}" | grep "$LABEL_KEY:minor" ; then
             LABEL_VALUE="minor"
-          elif echo "${LABELS}" | grep "bump:patch" ; then
+          elif echo "${LABELS}" | grep "$LABEL_KEY:patch" ; then
             LABEL_VALUE="patch"
-          elif echo "${LABELS}" | grep "bump:ignore" ; then
+          elif echo "${LABELS}" | grep "$LABEL_KEY:ignore" ; then
             LABEL_VALUE="ignore"
           fi
         fi
@@ -46,13 +47,13 @@ runs:
       if: ${{ github.event_name == 'pull_request' }}
       run: |
         LABEL_VALUE=${{ inputs.default-label-value }}
-        if ${{ contains(github.event.pull_request.labels.*.name, 'bump:major') }}; then
+        if ${{ contains(github.event.pull_request.labels.*.name, '$LABEL_KEY:major') }}; then
           LABEL_VALUE="major"
-        elif ${{ contains(github.event.pull_request.labels.*.name, 'bump:minor') }}; then
+        elif ${{ contains(github.event.pull_request.labels.*.name, '$LABEL_KEY:minor') }}; then
           LABEL_VALUE="minor"
-        elif ${{ contains(github.event.pull_request.labels.*.name, 'bump:patch') }}; then
+        elif ${{ contains(github.event.pull_request.labels.*.name, '$LABEL_KEY:patch') }}; then
           LABEL_VALUE="patch"
-        elif ${{ contains(github.event.pull_request.labels.*.name, 'bump:ignore') }}; then
+        elif ${{ contains(github.event.pull_request.labels.*.name, '$LABEL_KEY:ignore') }}; then
           LABEL_VALUE="ignore"
         fi
         echo "The pull request event label value is: $LABEL_VALUE"
