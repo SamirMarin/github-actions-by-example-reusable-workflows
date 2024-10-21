@@ -47,13 +47,13 @@ runs:
       if: ${{ github.event_name == 'pull_request' }}
       run: |
         LABEL_VALUE=${{ inputs.default-label-value }}
-        if ${{ contains(github.event.pull_request.labels.*.name, format('{0}:major', inputs.label-value)) }}; then
+        if ${{ contains(github.event.pull_request.labels.*.name, format('{0}:major', inputs.label-key)) }}; then
           LABEL_VALUE="major"
-        elif ${{ contains(github.event.pull_request.labels.*.name, format('{0}:major', inputs.label-value)) }}; then
+        elif ${{ contains(github.event.pull_request.labels.*.name, format('{0}:major', inputs.label-key)) }}; then
           LABEL_VALUE="minor"
-        elif ${{ contains(github.event.pull_request.labels.*.name, format('{0}:patch', inputs.label-value)) }}; then
+        elif ${{ contains(github.event.pull_request.labels.*.name, format('{0}:patch', inputs.label-key)) }}; then
           LABEL_VALUE="patch"
-        elif ${{ contains(github.event.pull_request.labels.*.name, format('{0}:major', inputs.label-value)) }}; then
+        elif ${{ contains(github.event.pull_request.labels.*.name, format('{0}:major', inputs.label-key)) }}; then
           LABEL_VALUE="ignore"
         fi
         echo "The pull request event label value is: $LABEL_VALUE"
