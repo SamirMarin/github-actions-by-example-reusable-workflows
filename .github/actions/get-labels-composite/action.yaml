@@ -47,6 +47,7 @@ runs:
       if: ${{ github.event_name == 'pull_request' }}
       run: |
         LABEL_VALUE=${{ inputs.default-label-value }}
+        LABEL_KEY=${{ inputs.label-key }}
         if ${{ contains(github.event.pull_request.labels.*.name, '$LABEL_KEY:major') }}; then
           LABEL_VALUE="major"
         elif ${{ contains(github.event.pull_request.labels.*.name, '$LABEL_KEY:minor') }}; then
