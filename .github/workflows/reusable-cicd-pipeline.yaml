@@ -1,0 +1,151 @@
+name: CICD Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      docker-compose-command:
+        required: false
+        type: string
+        description: "Docker compose command"
+        default: |
+          docker compose up -d
+      test-script:
+        required: false
+        type: string
+        description: "Test script"
+        default: |
+          ./scripts/dynamodb/create-table.sh
+          go test -v ./...
+      build-owner:
+        required: false
+        type: string
+        description: "The repository owner (the ORG or username)"
+        default: ${{ github.event.repository.owner.login }}
+      build-name:
+        required: false
+        type: string
+        description: "The repository name"
+        default: ${{ github.event.repository.name }}
+      build-tags:
+        required: false
+        type: string
+        description: "The build tags"
+        default: |
+          type=sha,prefix=,format=long
+          type=ref,event=branch
+          type=ref,event=pr
+      build-push:
+        required: false
+        type: boolean
+        description: "Whether to push the image after build"
+        default: ${{ github.event_name != 'pull_request' }}
+      deploy-docker-compose-file:
+        required: false
+        type: string
+        description: "The docker compose file to deploy"
+        default: 'deploy/docker-compose.yaml'
+      deploy-service-name:
+        required: true
+        type: string
+        description: "The service name to deploy"
+        default: ${{ github.event.repository.name }}
+      deploy-commit:
+        required: false
+        type: boolean
+        description: "Commit changes to deploy"
+        default: ${{ github.event_name != 'pull_request' }}
+      deploy-create-pr:
+        required: false
+        type: boolean
+        description: "Create PR for deploy"
+        default: ${{ github.event_name != 'pull_request' }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: docker compose
+        run: |
+          ${{ inputs.docker-compose-command }}
+        env:
+          DOCKER_COMPOSE_COMMAND_OPTS: "-inMemory"
+      - name: Test
+        run: |
+          ${{ inputs.test-script }}
+        env:
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: 'us-west-2'
+          DYNAMODB_LOCAL_ENDPOINT: "http://localhost:8000"
+
+  build:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ inputs.build-owner }}/${{ inputs.build-name }}
+          tags: ${{ inputs.build-tags }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          push: ${{ inputs.build-push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          
+  delivery:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image reference
+        id: image
+        run: |
+          echo "owner_lc=${OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "repo_lc=${REPO,,}" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ inputs.build-owner }}
+          REPO: ${{ inputs.build-name }}
+
+      - name: Update deployment.yaml
+        uses: fjogeleit/yaml-update-action@v0.16.1
+        with:
+          valueFile: ${{ inputs.deploy-docker-compose-file }}
+          propertyPath: services[${{ inputs.deploy-service-name }}].image
+          value: ghcr.io/${{ steps.image.outputs.owner_lc }}/${{ steps.image.outputs.repo_lc }}:${{ github.sha }}
+          commitChange: ${{ inputs.deploy-commit }}
+          targetBranch: main
+          masterBranchName: main
+          createPR: ${{ inputs.deploy-create-pr }}
+          branch: 'deploy'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          message: 'Update Image Version to: ${{ github.sha }}'
