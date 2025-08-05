@@ -140,7 +140,7 @@ jobs:
         uses: fjogeleit/yaml-update-action@v0.16.1
         with:
           valueFile: ${{ inputs.deploy-docker-compose-file }}
-          propertyPath: services[${{ inputs.deploy-service-name }}].image
+          propertyPath: services["${{ inputs.deploy-service-name }}"].image
           value: ghcr.io/${{ steps.image.outputs.owner_lc }}/${{ steps.image.outputs.repo_lc }}:${{ github.sha }}
           commitChange: ${{ inputs.deploy-commit }}
           targetBranch: main
