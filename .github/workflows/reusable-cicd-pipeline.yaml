@@ -45,7 +45,7 @@ on:
         description: "The docker compose file to deploy"
         default: 'deploy/docker-compose.yaml'
       deploy-service-name:
-        required: true
+        required: false
         type: string
         description: "The service name to deploy"
         default: ${{ github.event.repository.name }}
